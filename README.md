@@ -16,3 +16,20 @@ from io import BytesIO
 from IPython.display import HTML, display
 ```
 
+* `pathlib.Path` is a standard Python library to handle file system paths (files and directories) in an object-oriented and cross-platform manner. Instead of manipulating paths as plain strings, such as `"C:\\Users\\..."` or `"/home/user/file.txt"`, `pathlib.Path` gives you a Path object that automatically handles:
+    
+    * joining paths;
+    * checking if files exist;
+    * creating directories;
+    * extracting file names or extensions;
+    * resolving absolute paths;
+ 
+* `datetime.datetime` is used for a timestamp in the output filenames.
+* `typing` is a type-hinting library introduced in Python 3.5, used for static type checking and improved code readability.
+
+| Type Hint | Meaning |
+| --------- | ------- |
+| `Sequence[T]` | Any ordered collection (list, tuple, etc.) of elements of type `T`. | 
+| `Tuple[T1, T2, ...]` | A fixed-length tuple of elements of given types. | 
+| `Optional[T]` | A value that can be either `T` or `None`. | 
+
