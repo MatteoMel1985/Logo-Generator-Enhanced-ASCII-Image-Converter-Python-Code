@@ -86,4 +86,12 @@ def _github_blob_to_raw(url: str) -> str:
     return url
 ```
 
+Since my image was stored on GitHub, this function is particularly useful. If the input is a GitHub “blob” page link (the kind you see in the browser), this function rewrites it into a direct raw-file URL so `requests.get(...)` downloads the actual image bytes instead of an HTML page.  
 
+* Function Header (`def _github_blob_to_raw(url: str) -> str:`): it defines a function named _github_blob_to_raw that takes a string argument called url and returns a string value.  
+
+* Conditional Guard (`if "github.com" in url and "/blob/" in url:`): Only runs the rewrite if the URL includes both `github.com` and `/blob/` (for example, it is a GitHub file preview page).
+
+* Rewrite Line (`url = url.replace("github.com/", "raw.githubusercontent.com/").replace("/blob/", "/")`): First, it changes the host from `github.com/` to `raw.githubusercontent.com/` (the CDN that serves file bytes), then, it removes the `/blob/` path segment so the path matches the raw CDN format.
+
+* Return Statement(`return url`): Gives back the modified URL, and if it wasn’t a blob link, it returns the original unchanged.
