@@ -52,3 +52,27 @@ from IPython.display import HTML, display
 * `BytesIO` is a built-in class that creates a memory-resident binary stream, which is an in-RAM “file” made of bytes. When downloading an image via requests, you receive bytes in memory (`r.content`). `BytesIO(r.content)` wraps those bytes in a file-like interface that PIL’s `Image.open()` can understand, without saving to disk.
 
 * `IPython.display` is part of the IPython/Jupyter Notebook ecosystem, and allows you to programmatically display rich media outputs (HTML, images, audio, etc.) inside notebook cells.
+
+# ***Global Switches & Output Directory***  
+
+```Python
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+OUT_DIR = Path("./ascii_output")
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+```
+
+* `ImageFile.LOAD_TRUNCATED_IMAGES = True` allows PIL to open slightly incomplete images rather than raising an error. It is useful for flaky network fetches or partially saved files.
+
+* `OUT_DIR` defines the export folder.
+
+* `mkdir(..., exist_ok=True)` creates it (and parent folders) if missing; safe to call repeatedly.
+
+# ***Character Density Scales (Dark and  light)***
+
+```Python
+# DENSITY: darkest -> lightest
+DENSITY_DEFAULT = "@%#*+=-:. "
+DENSITY_HEAVY   = "MW@#%8&$*+=-:. "  # inkier glyphs
+```
+
+These strings are ordered from visually densest (covers more pixels) to lightest (space). They become the palette that pixels map to.
