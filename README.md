@@ -75,4 +75,15 @@ DENSITY_DEFAULT = "@%#*+=-:. "
 DENSITY_HEAVY   = "MW@#%8&$*+=-:. "  # inkier glyphs
 ```
 
-These strings are ordered from visually densest (covers more pixels) to lightest (space). They become the palette that pixels map to.
+These strings are ordered from visually densest (covers more pixels) to lightest (space). They become the palette that pixels map to.  
+
+# ***Utility: Convert GitHub “Blob” URLs to Raw***  
+
+```Python
+def _github_blob_to_raw(url: str) -> str:
+    if "github.com" in url and "/blob/" in url:
+        url = url.replace("github.com/", "raw.githubusercontent.com/").replace("/blob/", "/")
+    return url
+```
+
+
