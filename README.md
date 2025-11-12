@@ -33,3 +33,22 @@ from IPython.display import HTML, display
 | `Tuple[T1, T2, ...]` | A fixed-length tuple of elements of given types. | 
 | `Optional[T]` | A value that can be either `T` or `None`. | 
 
+* `re` is Python’s Regular Expression library. In the code is used to remove query strings (`?raw=true`) and hash fragments (`#something`) from URLs to extract a clean filename.
+
+* `numpy` is the fundamental numerical computing library in Python. It provides the `ndarray` (N-dimensional array) structure, allowing fast vectorised math using C-optimised operations.
+
+* `requests` is the de-facto standard library for HTTP communication in Python. It simplifies downloading data from URLs with functions like `requests.get(url)`.
+
+* `PIL`, whic is the modern forked name for `PIL` (Python Imaging Library) is the main image-processing library for Python. It provides tool to:
+
+| Submodule | Role in the Code |
+| --------- | ---------------- |
+| `Image` | Core image object. Used for opening (`Image.open()`), saving, converting to grayscale (`convert("RGB")`), resizing (`resize()`), and creating new canvases (`Image.new()`). | 
+| `ImageOps` | High-level operations: here it’s used for `ImageOps.grayscale(img)` to quickly make an image monochrome. | 
+| `ImageFile` | Controls how PIL loads files; setting `ImageFile.LOAD_TRUNCATED_IMAGES = True` tells it not to crash if the image stream is incomplete. | 
+| `ImageFont` | Loads font files (`.ttf`, `.ttc`) to draw text with custom style and size. Used to draw ASCII characters on the PNG. | 
+| `ImageDraw` | Provides a drawing interface on an `Image` object. Used to draw the ASCII text grid onto a blank canvas. Example: `draw.text((x,y), "ABC", font=font, fill=fg_color)`. | 
+
+* `BytesIO` is a built-in class that creates a memory-resident binary stream, which is an in-RAM “file” made of bytes. When downloading an image via requests, you receive bytes in memory (`r.content`). `BytesIO(r.content)` wraps those bytes in a file-like interface that PIL’s `Image.open()` can understand, without saving to disk.
+
+* `IPython.display` is part of the IPython/Jupyter Notebook ecosystem, and allows you to programmatically display rich media outputs (HTML, images, audio, etc.) inside notebook cells.
