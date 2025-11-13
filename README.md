@@ -377,7 +377,7 @@ def _normalize_image_for_ascii(img: Image.Image, cols: int, char_aspect_guess: f
 
 * `return gray.resize((cols, rows), resample=Image.BICUBIC)` returns the normalized brightness-grid image.
 
-# ***Map Frayscale Pixels to Characters***  
+# ***Map Grayscale Pixels to Characters***  
 
 ```Python
 def _map_pixels_to_chars(arr: np.ndarray, charset: Sequence[str], invert_map: bool = True, brightness_boost: float = 1.0) -> np.ndarray:
