@@ -505,4 +505,53 @@ chars_array[idx[i, j]]
   * The output is a 2D array of the same shape as `idx`, but now each entry is a string character instead of a number.
 
 Result:
-A 2D NumPy array of characters, `char_grid`, where each position corresponds to one pixel in the original (resized) grayscale image.
+A 2D NumPy array of characters, `char_grid`, where each position corresponds to one pixel in the original (resized) grayscale image.  
+
+# ***Turn the Char Grid into Plain Text***  
+
+```Python
+def _ascii_to_text_lines(char_grid: np.ndarray) -> str:
+    return "\n".join("".join(row.tolist()) for row in char_grid)
+```
+
+The function `_ascii_to_text_lines` takes as input a 2-dimensional NumPy array of characters (i.e., the ASCII grid), where:  
+
+* Each row of the array is a sequence of characters (e.g. `["@","M","W","."," "]`).
+* The full array represents the entire ASCII image.
+
+The function converts this 2D array into a multiline string, where each row of the array becomes a line of text, and all lines are joined using newline characters (`"\n"`).
+In other words, it converts a matrix of characters into a readable ASCII-art text block.
+
+* `"def _ascii_to_text_lines(char_grid: np.ndarray) -> str:"`:
+
+    * Defines a function named` _ascii_to_text_lines`.
+    * It expects one argument: `char_grid`, which is a NumPy array.
+    * The return type is declared as `str`.
+ 
+* `"return ..."` simply indicates that the function returns the final multiline string. There is no intermediate variable; the expression is computed and immediately returned.
+
+* `"\n".join(...)`: It constructs the final ASCII text by placing one newline per row.
+
+    * `"\n"` is the separator.
+    * `.join(...)` merges a sequence of strings into one string, putting a newline between each.
+ 
+ * `"".join(row.tolist())` is the inner join, executed once per row:
+
+     * `row` is a 1D slice of the NumPy array (e.g., `['@','W',' ','.']`).
+     * `row.tolist()` converts the NumPy row (which is something like `np.ndarray(['@','W',' ','.'])`) into a Python list of characters.
+     * `"".join([...])` concatenates all characters in the list into one single string with no separator.
+  
+* `"for row in char_grid"` is a generator expression. It iterates over every row of the 2D `char_grid`.
+
+# ***Build an HTML Block for Preview/Export***  
+
+```Python
+def _ascii_to_html(char_grid: np.ndarray, fg_color: str, bg_color: str) -> str:
+    text_block = _ascii_to_text_lines(char_grid)
+    style = (
+        f"background:{bg_color};color:{fg_color};font-family:monospace;"
+        f"line-height:1.0;white-space:pre;margin:0;padding:12px;font-size:10px;"
+    )
+    return f'<div style="background:{bg_color};padding:12px;"><pre style="{style}">{text_block}</pre></div>'
+```
+
