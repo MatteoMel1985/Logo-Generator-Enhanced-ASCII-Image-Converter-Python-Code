@@ -326,4 +326,53 @@ return ImageFont.load_default()
 
 Monospaced fonts guarantee equal character cell width, crucial for ASCII grids to align perfectly, whereas bold faces produce inkier strokes, improving readability of dense ASCII art (especially at smaller sizes or with stroke outlines).  
 
+# ***First-Pass Resize to an ASCII Grid Size***  
 
+```Python
+def _normalize_image_for_ascii(img: Image.Image, cols: int, char_aspect_guess: float = 0.5) -> Image.Image:
+    """
+    Quick grayscale resize to get an ASCII grid size that’s in the ballpark.
+    We'll fix any residual aspect mismatch *after* rendering by resizing the PNG.
+    """
+    gray = ImageOps.grayscale(img)
+    w, h = gray.size
+    rows = max(1, int(round((h / w) * cols * char_aspect_guess)))
+    return gray.resize((cols, rows), resample=Image.BICUBIC)
+```
+
+`_normalize_image_for_ascii()` performs the first stage of the ASCII conversion pipeline: it takes the original image and shrinks it down to an ASCII-friendly resolution, where:  
+
+* the width (in characters) is fixed by the user (`cols`)
+* the height (in characters, called `rows`) is estimated using the original aspect ratio and the “stretchiness” of ASCII characters
+* the image is converted to grayscale, because ASCII art does not need color—only brightness
+* the resized grayscale image is returned as a small grid of pixels, later mapped to characters
+
+* `def _normalize_image_for_ascii(img: Image.Image, cols: int, char_aspect_guess: float = 0.5) -> Image.Image:` defines the function and its inputs:
+
+    * `img: Image.Image` is a PIL `Image` object.
+    * `cols: int` defines how many ASCII characters wide you want the output to be. his number comes from the user.
+    * `char_aspect_guess: float = 0.5` is a fudge factor that compensates for the fact that ASCII characters are rectangular, not square. Typical monospace characters are ~2× taller than they are wide. A value of `0.5` compresses the computed height accordingly.
+    * RETURN TYPE: `Image.Image` The function returns a grayscale, downscaled PIL image whose pixel grid corresponds to ASCII positions.
+    
+* `gray = ImageOps.grayscale(img)`: since ASCII art only needs brightness information, and colour would be wasted and would make mapping more complicated, this processing lines:
+
+    * Converts the input image to 8-bit grayscale (`mode = "L"`).
+    * Every pixel value is now a number between 0 (black) and 255 (white).
+    * The ASCII conversion later maps brightness → character.
+ 
+* `w, h = gray.size`: `w` is the width of the grayscale image in pixels, whereas `h` is the height of the grayscale image in pixels. This gives the original aspect ratio `aspect` = `h` / `w`. This ratio is needed to compute how many rows (height) the ASCII grid should have.
+
+* `rows = max(1, int(round((h / w) * cols * char_aspect_guess)))` It calculates how many ASCII text rows the output should have.
+
+  * `(h / w)` is the original aspect ratio, the real-world shape of the image. Example: If `h/w` > 1 = portrait, If < 1 = landscape.
+  * `cols`: number of ASCII columns. The number of characters wide was already fixed. Now we need to compute the height that preserves the shape.
+  * `(h / w) * cols` is the raw height estimate.
+  * `* char_aspect_guess` adjusts for non-square glyphs. ASCII characters are taller than wide. A typical monospace cell might be 12 px high × 6 px wide. Thus:
+    
+      * If you didn’t compensate → ASCII appears vertically stretched.
+      * Multiplying by 0.5 shrinks the rows accordingly.
+      * 0.5 is only an approximation; the final PNG correction fixes the remainder
+   
+  * `round(...) and int(...)` Ensures we never return zero rows. Even a sliver of an image must be represented by at least 1 ASCII line.
+
+* `return gray.resize((cols, rows), resample=Image.BICUBIC)` returns the normalized brightness-grid image.
