@@ -95,3 +95,235 @@ Since my image was stored on GitHub, this function is particularly useful. If th
 * Rewrite Line (`url = url.replace("github.com/", "raw.githubusercontent.com/").replace("/blob/", "/")`): First, it changes the host from `github.com/` to `raw.githubusercontent.com/` (the CDN that serves file bytes), then, it removes the `/blob/` path segment so the path matches the raw CDN format.
 
 * Return Statement(`return url`): Gives back the modified URL, and if it wasn’t a blob link, it returns the original unchanged.
+
+# ***Load an Image from URL or Local Path***
+
+```Python
+def _load_image(image_path: str) -> Tuple[Image.Image, Path]:
+    if image_path.startswith("http"):
+        url = _github_blob_to_raw(image_path)
+        r = requests.get(url, timeout=60)
+        r.raise_for_status()
+        img = Image.open(BytesIO(r.content)).convert("RGB")
+        fname = Path(re.sub(r"[?#].*$", "", url)).name or "image"
+        return img, Path(fname)
+    else:
+        p = Path(image_path)
+        if not p.exists():
+            raise FileNotFoundError(f"Image not found: {p}")
+        img = Image.open(p).convert("RGB")
+        return img, p
+```
+
+This function takes either a URL or a local file path, loads the image using Pillow (always as RGB), and returns both the image object and a Path representing its filename. 
+
+### ***Function Header***
+
+```Python
+def _load_image(image_path: str) -> Tuple[Image.Image, Path]:
+```
+
+* `_load_image`: private helper that encapsulates “get me a PIL image from any path/URL”.
+* `image_path: str`: input is a string, either a URL or filesystem path.
+* `-> Tuple[Image.Image, Path]`: returns a 2-tuple:
+    * a `PIL.Image.Image` object (img),
+    * a `pathlib.Path` object (`Path`) for the file name/base.
+
+### ***Branch: URL VS Local File***
+
+```Python
+if image_path.startswith("http"):
+    ...
+else:
+    ...
+```
+
+* If the string starts with `"http"` (so `"http://"` or `"https://"`) it’s treated as a web URL.
+* Anything else is treated as a local path (like `"./logo.png"` or `"C:\\images\\photo.jpg"`).
+
+### ***URL Branch – Remote Image Loading***  
+
+### ***Normalise GitHub Blob URLs***
+
+```Python
+url = _github_blob_to_raw(image_path)
+```
+
+* If the URL is a GitHub “blob” page (`https://github.com/.../blob/...`), this converts it into a raw file URL so we get the actual image bytes.
+* If not GitHub (or not a blob), it just returns the original URL unchanged.
+
+### ***Download via HTTP***
+
+```Python
+r = requests.get(url, timeout=60)
+r.raise_for_status()
+```
+
+* `requests.get(url, timeout=60)`:
+
+    *  Contacts the server and fetches the resource.
+    *  `timeout=60` means if the server doesn’t respond within 60 seconds, raise a timeout error.
+ 
+*  `r.raise_for_status()`:
+
+    *  If the HTTP status is not 2xx (e.g. 404, 500), this raises an exception (example: `HTTPError`).
+    *  This prevents us from mistakenly trying to open an error page as an image.
+ 
+### ***Convert response bytes to a PIL image***  
+
+```Python
+img = Image.open(BytesIO(r.content)).convert("RGB")
+```
+
+* `r.content`: the raw bytes of the HTTP response (the image file data).
+* `BytesIO(r.content)`: wraps those bytes in a file-like object in memory, which PIL understands.
+* `Image.open(...)`: asks Pillow to interpret those bytes as an image (JPEG, PNG, etc.).
+* `.convert("RGB")`: converts the image to RGB colour space:
+
+    * Ensures a consistent 3-channel format regardless of original mode (L, RGBA, CMYK, etc.).
+    * Simplifies downstream handling (no alpha channel or palette surprises).
+ 
+### ***Extract a nice filename from the URL***  
+
+```Python
+fname = Path(re.sub(r"[?#].*$", "", url)).name or "image"
+```
+
+* `re.sub(r"[?#].*$", "", url)`:
+
+  * Regex pattern: `[?#].*$`
+    * `[?#]`: match either `?` or `#`.
+    * `.*` everything after it.
+    * `$` to the end of the string.
+   
+* This removes query parameters and hash fragments, like. `?raw=true` or `#something` (for example, `"https://example.com/img/photo.png?raw=true#foo"` becomes `"https://example.com/img/photo.png"`).
+
+* `Path(...).name:`
+    
+    * `Path("https://example.com/img/photo.png").name` → `"photo.png"`.
+    * `.name` gives the last component of the path.
+
+* `or "image"`:  
+
+    * If `.name` somehow ends up empty (very unusual, but safe), fall back to `"image"`.
+ 
+So `fname` becomes something like `"With-Snake-Shading.jpg"`.  
+
+### ***Return Image + Path***  
+
+```Python
+return img, Path(fname)
+```
+
+* Wraps the filename string in a `Path` object (e.g. `Path("With-Snake-Shading.jpg")`).
+* Caller now knows:
+    
+    * the image pixels (`img`),
+    * the base name to use in output filenames (`Path(fname).stem`, etc.).
+ 
+### ***Local Branch - Filesystem Image Loading***  
+
+```Python
+else:
+    p = Path(image_path)
+    if not p.exists():
+        raise FileNotFoundError(f"Image not found: {p}")
+    img = Image.open(p).convert("RGB")
+    return img, p
+```
+
+* `p = Path(image_path)` Convert string to Path
+* `if not p.exists():
+    raise FileNotFoundError(f"Image not found: {p}")`:
+
+    * `p.exists()` checks that the file is present at that path.
+    * If not, raise FileNotFoundError with a clear message.
+  
+### ***Open with PIL and Normalise to RGB***
+
+```Python
+img = Image.open(p).convert("RGB")
+```
+
+* `Image.open(p)` reads from disk and builds a PIL image object.
+* `.convert("RGB")` same as in the URL branch: standardise to RGB.
+
+### ***Return Image + Path***  
+
+```Python
+return img, p
+```
+
+The title is self-explanatory.
+
+# ***Choose a Monospaced Font (With Fallbacks)***  
+
+```Python
+def _pick_font(font_size: int, bold: bool = True) -> ImageFont.FreeTypeFont:
+    for path in [
+        "DejaVuSansMono-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+        "/System/Library/Fonts/Menlo.ttc",
+        "C:\\Windows\\Fonts\\consola.ttf",
+    ]:
+        try:
+            return ImageFont.truetype(path, font_size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+```
+
+The function tries to load a monospaced font (preferably bold) from a small list of common cross-platform font files; it returns the first one that loads successfully, and if none can be loaded, it falls back to Pillow’s built-in default font.  
+
+### ***Function Signature***  
+
+* `def _pick_font(font_size: int, bold: bool = True) -> ImageFont.FreeTypeFont`:
+
+    * `_pick_font`: private helper (leading underscore) to select a font.
+    * `font_size: int`: requested point size.
+    * `bold: bool = True`: indicates a preference for a bold face.
+    * Return type: a Pillow `ImageFont.FreeTypeFont` object.
+ 
+### ***Candidate Font list (Platform-Aware Order)***  
+
+```Python
+for path in [
+    "DejaVuSansMono-Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+    "/System/Library/Fonts/Menlo.ttc",
+    "C:\\Windows\\Fonts\\consola.ttf",
+]:
+```
+
+* A small search list with typical locations/names for monospaced fonts:
+
+    * Linux (generic relative): `DejaVuSansMono-Bold.ttf` (current working dir)
+    * Linux (system): `/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf`
+    * macOS: `/System/Library/Fonts/Menlo.ttc` (Menlo in a font collection)
+    * Windows: `C:\Windows\Fonts\consola.ttf `(Consolas; Windows is case-insensitive so consola.ttf is fine)
+  
+### ***Try to Load each Font; on Success Return Immediately***
+
+```Python
+try:
+    return ImageFont.truetype(path, font_size)
+except Exception:
+    continue
+```  
+
+* `ImageFont.truetype(path, font_size)` loads a scalable font via FreeType.
+* If the file isn’t found, is unreadable, or can’t be parsed, Pillow raises (commonly `OSError` / `IOError`), and the next path is tried.
+* On first success, we return (short-circuit).
+
+### ***Fallback to Pillow’s Default Bitmap Font***  
+
+```Python
+return ImageFont.load_default()
+```
+
+* If no candidate loads, we still return a usable font (small bitmap).
+* Ensures the rest of the pipeline (PNG rendering) doesn’t crash.
+
+Monospaced fonts guarantee equal character cell width, crucial for ASCII grids to align perfectly, whereas bold faces produce inkier strokes, improving readability of dense ASCII art (especially at smaller sizes or with stroke outlines).  
+
+
