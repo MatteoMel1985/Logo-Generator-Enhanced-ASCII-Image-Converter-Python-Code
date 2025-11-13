@@ -432,3 +432,77 @@ This line applies global brightness adjustment, then clips the result to a legal
 norm = arr.astype(np.float32) / 255.0 if invert_map else 1.0 - (arr.astype(np.float32) / 255.0)
 ```
 
+It is a conditional operation.
+
+* In both branches, we see `arr.astype(np.float32) / 255.0`:
+
+    * `arr.astype(np.float32)` converts the array to 32-bit floats. This is important because integer division would wreck your normalization (e.g. 100 / 255 as integers would truncate, but as floats it's ≈ 0.392).
+    * `/ 255.0` maps pixel values from [0, 255] to [0.0, 1.0]
+
+Then the line is conceptually:
+
+* If `invert_map` is True:
+
+    * 0 (black) → 0.0
+    * 255 (white) → 1.0
+ 
+* If `invert_map` is `False`:
+
+    * 0 (black) → 1.0
+    * 255 (white) → 0.0
+ 
+### ***Converting Normalized Brightness to Character Indices***  
+
+```Python
+idx = (norm * (len(charset) - 1)).round().astype(np.int32)
+```
+
+This line maps the continuous brightness [0, 1] to discrete indices into `charset`.  
+
+* `len(charset) - 1` If charset has N characters, valid indices go from 0 to N-1. So multiplying norm (0–1) by (N-1) scales it to the range [0, N-1].
+* `norm * (len(charset) - 1)` For example, if `len(charset) = 10` and:
+
+    * `norm = 0.0` → 0.0
+    * `norm = 0.5` → 4.5
+    * `norm = 1.0` → 9.0
+ 
+ * `.round()` Rounds to the nearest integer index. so:
+ 
+     * 4.4 → 4
+     * 4.5 → 4 or 5 depending on NumPy’s rounding rules (NumPy uses “banker’s rounding” – .5 to even).
+  
+### ***Looking Up the Characters***  
+
+```Python
+return np.take(np.array(list(charset)), idx)
+```
+
+This is where numeric indices become characters.  
+1. `list(charset)`
+
+  * If charset is a string like `"MW@#%8&$*+=-:. "`, `list(charset)` becomes:
+
+```Python
+["M", "W", "@", "#", "%", "8", "&", "$", "*", "+", "=", "-", ":", ".", " "]
+```
+
+  * If charset is already a sequence of strings, `list()` just ensures we’re working with a plain Python list.
+
+2. `np.array(list(charset))`
+
+  * Converts that list into a 1D NumPy array, e.g. `chars_array.shape == (N,)` where `N = len(charset)`.
+
+3. `np.take(chars_array, idx)`
+
+  * `np.take` takes elements along an axis (here the only axis) using idx as indices.
+  * Because `idx` is a 2D array (same shape as the image), NumPy “broadcasts” the indexing across that shape.
+  * For each position `(i, j)`, it does:
+
+```Python
+chars_array[idx[i, j]]
+```
+
+  * The output is a 2D array of the same shape as `idx`, but now each entry is a string character instead of a number.
+
+Result:
+A 2D NumPy array of characters, `char_grid`, where each position corresponds to one pixel in the original (resized) grayscale image.
