@@ -376,3 +376,59 @@ def _normalize_image_for_ascii(img: Image.Image, cols: int, char_aspect_guess: f
   * `round(...) and int(...)` Ensures we never return zero rows. Even a sliver of an image must be represented by at least 1 ASCII line.
 
 * `return gray.resize((cols, rows), resample=Image.BICUBIC)` returns the normalized brightness-grid image.
+
+# ***Map Frayscale Pixels to Characters***  
+
+```Python
+def _map_pixels_to_chars(arr: np.ndarray, charset: Sequence[str], invert_map: bool = True, brightness_boost: float = 1.0) -> np.ndarray:
+    arr = np.clip(arr * brightness_boost, 0, 255)
+    norm = arr.astype(np.float32) / 255.0 if invert_map else 1.0 - (arr.astype(np.float32) / 255.0)
+    idx = (norm * (len(charset) - 1)).round().astype(np.int32)
+    return np.take(np.array(list(charset)), idx)
+```
+
+The function takes a 2D array of grayscale pixels (numbers 0–255) and turns it into a 2D array of characters from your charset, so that darker pixels become “heavier” glyphs (`M`, `W`, `#`, etc.) and lighter pixels become “lighter” glyphs (`.`, space, etc.). It also optionally:  
+
+* boosts brightness (`brightness_boost`)
+* inverts the mapping (`invert_map`) so you can choose whether dark pixels give dense chars or the opposite.
+
+### ***Function Signature***  
+
+```Python
+def _map_pixels_to_chars(arr: np.ndarray, charset: Sequence[str], invert_map: bool = True, brightness_boost: float = 1.0) -> np.ndarray:
+```
+
+* `arr: np.ndarray` is the grayscale image data, typically a 2D array (height × width), where each element is a pixel intensity from 0 (black) to 255 (white).
+* `charset: Sequence[str]` is a sequence of characters ordered from “darkest ink” to “lightest ink”. For example, with `DENSITY_HEAVY = "MW@#%8&$*+=-:. "`, index 0 is the densest (`'M'`), and the last index is the lightest (`' '`).
+* `invert_map: bool = True` controls how brightness is mapped:
+
+    * `True` → standard mapping: dark pixels → low values → heavy chars.
+    * `False` → inverted mapping: dark pixels → heavy chars if you want to flip the light/dark logic (more on this in the next line).
+ 
+* `brightness_boost: float = 1.0` multiplies pixel values by this factor to globally make the image brighter (or darker if < 1).
+* `Return type: np.ndarray` returns a NumPy array of the same shape as `arr`, but with each element replaced by a character from `charset`.
+
+### ***Brightness Boosting and Clamping***  
+
+```Python
+arr = np.clip(arr * brightness_boost, 0, 255)
+```
+
+This line applies global brightness adjustment, then clips the result to a legal grayscal range
+
+* `arr * brightness_boost` every pixel is multiplied by `brightness_boost`. Example:
+
+    * If a pixel is 100 and `brightness_boost = 1.3`, the result is 130.
+    * If a pixel is 200 and `brightness_boost` = 1.3, the result is 260.
+ 
+* `np.clip(..., 0, 255)` ensures values stay in the valid 8-bit grayscale range [0, 255]:
+
+    * Anything < 0 becomes 0.
+    * Anything > 255 becomes 255.
+ 
+### ***Normalizing To [0, 1] and Optional Inversion***  
+
+```Python
+norm = arr.astype(np.float32) / 255.0 if invert_map else 1.0 - (arr.astype(np.float32) / 255.0)
+```
+
