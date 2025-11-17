@@ -859,3 +859,23 @@ draw.text(
     * Save it to disk as PNG.
    
 # ***How this Fits in The Whole Pipeline***
+
+Just to connect the dots with the rest of your code:
+
+1. `convert_image_to_ascii`:
+
+   * Builds `char_grid` using:
+  
+     * `_normalize_image_for_ascii` (resize & grayscale)
+     * `_map_pixels_to_chars` (map brightness ➜ characters)
+    
+2.  Then `_render_png_from_ascii`:
+
+  * Takes `char_grid` and literally draws those characters onto a bitmap using a properly measured grid based on `font` metrics.
+
+3. Finally `_aspect_correct_png`:
+
+  * Takes that bitmap and resizes it so that its aspect ratio equals the original photo (preserving width or height as requested).
+
+So `_render_png_from_ascii` is the pure rendering stage: no aspect correction yet, no saving yet — just a clean, grid-faithful text drawing.
+
