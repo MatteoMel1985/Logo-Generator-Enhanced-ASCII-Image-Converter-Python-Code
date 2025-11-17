@@ -588,4 +588,274 @@ Process:
 
     * Returns one big HTML string that, when rendered, shows your ASCII art as a styled block in the browser or notebook.
  
-  
+# ***Render a PNG by Drawing Rows of Text***
+
+```Python
+def _render_png_from_ascii(
+    char_grid: np.ndarray,
+    fg_color: str,
+    bg_color: str,
+    font: ImageFont.FreeTypeFont,
+    stroke_width: int = 1,
+    stroke_fill: Optional[str] = None,
+    line_spacing_px: int = 0,
+):
+    """Render ASCII grid to a PIL Image (PNG bitmap), without saving yet."""
+    if stroke_fill is None:
+        stroke_fill = fg_color
+
+    # Measure cell using 'M' for height and font.getlength for width (advance)
+    try:
+        char_w = max(1, int(round(font.getlength("A"))))
+    except Exception:
+        bbox = font.getbbox("A")
+        char_w = max(1, bbox[2] - bbox[0])
+    bbox = font.getbbox("M")
+    char_h = max(1, bbox[3] - bbox[1])
+    line_h = char_h + max(0, line_spacing_px)
+
+    rows, cols = char_grid.shape
+    img = Image.new("RGB", (cols * char_w, rows * line_h), bg_color)
+    draw = ImageDraw.Draw(img)
+    y = 0
+    for r in range(rows):
+        draw.text((0, y), "".join(char_grid[r].tolist()), font=font, fill=fg_color,
+                  stroke_width=stroke_width, stroke_fill=stroke_fill)
+        y += line_h
+    return img
+```
+
+This function is the ASCII to PNG conversion's heart of the pipeline: it takes the previously computed character grid, lays those characters out in a regular another one using a monospaced font, and returns a PIL Image that is a bitmap rendering of that ASCII art.
+
+### ***Function Signature and Parameters***
+
+```Python
+def _render_png_from_ascii(
+    char_grid: np.ndarray,
+    fg_color: str,
+    bg_color: str,
+    font: ImageFont.FreeTypeFont,
+    stroke_width: int = 1,
+    stroke_fill: Optional[str] = None,
+    line_spacing_px: int = 0,
+):
+```
+
+* `char_grid: np.ndarray`:
+
+    * A 2D NumPy array: each element is a single character (e.g. `"@"`, `"#"`, `" "`).
+    * Shape is `(rows, cols)`, which defines how many text rows and columns the ASCII art has.
+    * Example: if you requested `out_width_chars=900`, `cols` should be `900`, while rows is computed earlier during the grayscale resize.
+ 
+* `fg_color: str`:
+
+    * Foreground colour for the characters, e.g. `"#66ff66"` (your bright green).
+    * Passed directly to Pillow as the `fill` colour when drawing text.
+ 
+* `bg_color: str`:
+
+    *  Background colour for the image, e.g. `"#000000"` for black.
+    * Used when creating the base `Image.new("RGB", size, bg_color)` canvas.
+ 
+* `font: ImageFont.FreeTypeFont`:
+
+    * A pre-chosen font object (monospaced, ideally) from `_pick_font`.
+    * It contains metrics (glyph sizes, spacing, etc.) and rendering logic.
+ 
+* `stroke_width: int = 1`:
+
+    *  Thickness of the outline around text.
+    *  `1` means a subtle outline that thickens the characters, helping them pop and look “inkier”.
+ 
+* `stroke_fill: Optional[str] = None`:
+
+    * Colour of the outline/stroke.
+    * If `None`, the function will default it to the same as `fg_color` (for example, the outline is the same colour as the text, making it look thicker rather than “outlined in another colour”).
+ 
+* `line_spacing_px: int = 0`:
+
+    * Extra pixels to add between lines of text.
+    * `0` means lines are packed as tightly as the font allows (just `char_h` tall).
+    * A positive value would add vertical breathing room between rows.
+ 
+### ***Set Stroke_Fill Default if Needed***
+
+```Python
+    if stroke_fill is None:
+        stroke_fill = fg_color
+```
+
+* If the caller did not specify a stroke colour:
+  * Use the same colour as the text.
+ 
+This makes the characters look thicker/bolder without giving them a contrasting outline. Good for “green terminal” aesthetics: glyphs are still pure green, just “fatter”.
+
+### ***Measuring the Character Cell (Width and Height)***  
+
+This is crucial: we need to know how big each character is in pixels to build a correctly sized image and avoid squashing/stretching.
+
+```Python
+    # Measure cell using 'M' for height and font.getlength for width (advance)
+    try:
+        char_w = max(1, int(round(font.getlength("A"))))
+    except Exception:
+        bbox = font.getbbox("A")
+        char_w = max(1, bbox[2] - bbox[0])
+```
+
+* **Goal**: compute `char_w`, the horizontal advance of a character, i.e. how many pixels to move right for each character cell.  
+
+* `font.getlength("A")`:
+
+  * Pillow’s method that returns the advance width of the string `"A"` with this font.
+  * More accurate for proportional fonts, but we’re assuming monospaced fonts so each character should have nearly the same width.
+  * Using `"A"` is arbitrary but safe; it is a typical letter.
+ 
+* `int(round(...))`:
+
+  * Converts the floating-point width to an integer number of pixels.
+ 
+* `max(1, ...)`:
+
+  * Ensure we don’t get zero or negative values (just a defensive guard).
+ 
+* The `except Exception:` block:
+
+  * Some environments or older Pillow versions may not support `font.getlength`.
+    * Returns a bounding box: `(left, top, right, bottom)`.
+    * Width ≈ `right - left`.
+  * Again, wrapped with max(1, ...) to avoid invalid values.
+ 
+So at the end of this block, `char_w` is our per-character cell width in pixels.  
+
+```Python
+    bbox = font.getbbox("M")
+    char_h = max(1, bbox[3] - bbox[1])
+    line_h = char_h + max(0, line_spacing_px)
+```
+
+* Now we measure height using `"M"`:
+
+  * `"M"` is often one of the tallest characters in the alphabet.
+  * `bbox = font.getbbox("M")` returns `(left, top, right, bottom)` in font space.
+  * Height ≈ `bottom - top`, so:
+ 
+```Python
+  char_h = max(1, bbox[3] - bbox[1])
+```
+
+* `line_h` is the total vertical step per text row:
+
+  * `line_h = char_h + max(0, line_spacing_px)`
+  * If `line_spacing_px` is 0, `line_h` equals `char_h`.
+  * If `line_spacing_px` is positive, you get taller lines, i.e. more space between rows.
+  * Again `max(0, ...)` avoids accidental negative spacing.
+ 
+Now we have:  
+
+  * `char_w`: width of one character cell in pixels.
+  * `line_h`: height of one line including extra spacing.
+
+These measurements ensure that text rows don’t overlap and that the image size matches the grid.
+
+### ***Creating the Output Image Canvas***
+
+```Python
+    rows, cols = char_grid.shape
+    img = Image.new("RGB", (cols * char_w, rows * line_h), bg_color)
+    draw = ImageDraw.Draw(img)
+```
+
+* `rows, cols = char_grid.shape`:
+
+  * `char_grid.shape` returns `(number_of_rows, number_of_columns)`.
+  * Example: if `char_grid` is 200 rows × 900 columns, then:
+
+    * `rows = 200`
+    * `cols = 900`
+   
+  * `Image.new("RGB", (cols * char_w, rows * line_h), bg_color)`:
+ 
+    * Create a new blank image:
+    * Mode `"RGB"`: 3-channel colour.
+    * Size: Width = `cols * char_w` and Height = `rows * line_h`
+    * Filled entirely with `bg_color` — this is the black background.
+   
+  * `draw = ImageDraw.Draw(img)`:
+
+    *  Creates a drawing context associated with `img`.
+    *  You’ll use `draw.text` to paint text onto this image.
+   
+### ***Looping Through Each Row and Drawing Text***  
+
+```Python
+    y = 0
+    for r in range(rows):
+        draw.text((0, y), "".join(char_grid[r].tolist()), font=font, fill=fg_color,
+                  stroke_width=stroke_width, stroke_fill=stroke_fill)
+        y += line_h
+    return img
+```
+
+### **Initial vertical position** 
+
+* `y = 0`:
+
+  * Start drawing text at the top of the image.
+ 
+### **Row-by-Row Rendering** 
+
+* `for r in range(rows):`:
+
+  * Iterate over each row index `r` in the ASCII grid.
+ 
+* Inside the loop:
+
+```Python
+"".join(char_grid[r].tolist())
+```
+
+* `char_grid[r]` is the `r`-th row, a 1D array of characters like `["@","%","#","*", ...]`.
+* `.tolist()` converts this NumPy array to a Python list.
+* `"".join(...)` turns that list into a single string, e.g. `"@%#*+=-:."`.
+* So we draw the entire row as one text string, rather than one character at a time.
+This is much faster and more consistent.
+
+```Python
+draw.text(
+    (0, y),
+    "".join(char_grid[r].tolist()),
+    font=font,
+    fill=fg_color,
+    stroke_width=stroke_width,
+    stroke_fill=stroke_fill
+)
+```
+
+* `draw.text((0, y), ...)`:
+
+  * Draws the string at pixel coordinates `(x=0, y=y)`:
+
+    * `x = 0`: always left-aligned at the left edge.
+    * `y`: vertical position for this row, increasing by line_h each iteration.
+   
+  * `font=font`: use the font passed into the function.
+  * `fill=fg_color`: colour of the glyph interior (your neon green).
+  * `stroke_width=stroke_width`: thickness of outline.
+  * `troke_fill=stroke_fill`: outline colour (same as fg by default here).
+ 
+* `y += line_h`:
+
+  * After drawing one row, move down by `line_h` pixels to prepare for the next row.
+  * This keeps rows evenly spaced with no overlap.
+ 
+### **Return the finished image**  
+
+* `return img`:
+
+  * The function returns the completed PIL Image with all ASCII rows drawn.
+  * The caller (`convert_image_to_ascii`) can then:
+    * Pass `img` to `_aspect_correct_png` to tweak aspect ratio.
+    * Save it to disk as PNG.
+   
+# ***How this Fits in The Whole Pipeline***
