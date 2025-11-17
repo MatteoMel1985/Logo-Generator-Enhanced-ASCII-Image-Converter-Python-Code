@@ -555,10 +555,10 @@ def _ascii_to_html(char_grid: np.ndarray, fg_color: str, bg_color: str) -> str:
     return f'<div style="background:{bg_color};padding:12px;"><pre style="{style}">{text_block}</pre></div>'
 ```
 
-This function turns the ASCII character grid into an HTLM snippet that you can: 
+This function turns the ASCII character grid into an HTLM snippet that can be:
 
-* show inline in Jupyter (via `display(HTML(...))`), and
-* save as a `.html` file and open in a browser
+* shown inline in Jupyter (via `display(HTML(...))`), and
+* saved as a `.html` file and open in a browser
 
 with green text on black, fixed-width font, and preserved spacing.  
 
