@@ -555,3 +555,37 @@ def _ascii_to_html(char_grid: np.ndarray, fg_color: str, bg_color: str) -> str:
     return f'<div style="background:{bg_color};padding:12px;"><pre style="{style}">{text_block}</pre></div>'
 ```
 
+This function turns the ASCII character grid into an HTLM snippet that you can: 
+
+* show inline in Jupyter (via `display(HTML(...))`), and
+* save as a `.html` file and open in a browser
+
+with green text on black, fixed-width font, and preserved spacing.  
+
+Inputs:
+
+* `char_grid`: a 2D NumPy array, shape (rows, cols), where each element is a single-character string (the ASCII art output).
+* `fg_color`: foreground (text) colour, (for example `"#66ff66"`).
+* `bg_color`: background colour (for example `"#000000"`).
+
+Process: 
+
+1. Converts the 2D grid into a single multi-line string (`text_block`) where:
+
+    * each row becomes one line of text,
+    * rows are separated by `\n`.
+  
+2. Builds a CSS style string that defines:
+
+    * colours, font, line height, padding, etc.
+  
+3. Wraps `text_block` in HTML:
+
+    * an outer `<div>` (for outer background + padding),
+    * an inner `<pre>` (for monospaced display with preserved spacing).
+  
+* Output:
+
+    * Returns one big HTML string that, when rendered, shows your ASCII art as a styled block in the browser or notebook.
+ 
+  
