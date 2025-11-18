@@ -879,3 +879,194 @@ Just to connect the dots with the rest of your code:
 
 So `_render_png_from_ascii` is the pure rendering stage: no aspect correction yet, no saving yet — just a clean, grid-faithful text drawing.
 
+# ***Post-Render Aspect Correction (Exact Match to Source)***  
+
+```Python
+def _aspect_correct_png(png_img: Image.Image, src_w: int, src_h: int, preserve: str = "width") -> Image.Image:
+    """
+    Resize the rendered PNG so its aspect exactly matches the original image.
+    preserve: "width" keeps PNG width, adjusts height; "height" keeps height, adjusts width.
+    """
+    Wp, Hp = png_img.size
+    src_aspect = src_w / src_h
+
+    if preserve == "width":
+        target_w = Wp
+        target_h = max(1, int(round(target_w / src_aspect)))
+    else:
+        target_h = Hp
+        target_w = max(1, int(round(target_h * src_aspect)))
+
+    # NEAREST keeps ASCII pixels crisp
+    if (target_w, target_h) != (Wp, Hp):
+        png_img = png_img.resize((target_w, target_h), resample=Image.NEAREST)
+    return png_img
+```
+
+The functiion takes the already-rendered ASCII PNG and resizes it so its aspect ratio exactly matches the original source image, either keeping the PNG’s current width fixed or its height fixed, and adjusting the other dimension accordingly. It uses nearest-neighbour resampling so the blocky ASCII “pixels” stay crisp instead of getting blurred.  
+
+### ***Function Signature and Purpose***  
+
+```Python
+def _aspect_correct_png(png_img: Image.Image, src_w: int, src_h: int, preserve: str = "width") -> Image.Image:
+```
+
+`png_img: Image.Image`:  
+
+* A Pillow `Image` object: this is your ASCII art PNG that was already rendered with characters.
+
+`src_w: int, src_h: int`:  
+
+* The original source image’s width and height in pixels (the real photo / image you converted to ASCII).
+
+`preserve: str = "width"`:  
+
+* A flag that tells the function what to keep fixed:
+
+  * `"width"` keeps the PNG’s width as is, adjust height to match the original aspect ratio.
+  * `"height"` keeps the PNG’s height, adjust width.
+ 
+`-> Image.Image`
+
+* Returns a new (or possibly the same) Image object that has been resized so it has the same aspect ratio as the original source image.
+
+### ***Getting the Current PNG Size***  
+
+```Python
+    Wp, Hp = png_img.size
+```
+
+* `png_img.size` is a Pillow property that returns (width, height) in pixels.
+* `Wp` = PNG width (P for “PNG”).
+* `Hp` = PNG height.
+
+At this point:
+
+* Source image: `(src_w, src_h)`
+* Current ASCII PNG: `(Wp, Hp)`
+
+They might have slightly different aspect ratios due to character sizing, font metrics, etc.
+
+### ***Computing the Source Aspect Ratio***  
+
+```Python
+    src_aspect = src_w / src_h
+```
+
+* Aspect ratio is width / height.
+* `src_aspect` = original image’s width divided by height.
+
+Examples
+
+* Landscape image, 1920×1080 → `src_aspect = 1920/1080 ≈ 1.777...` (16:9).
+* Square image, 800×800 → `src_aspect = 1.0`.
+* Tall/portrait image, 800×1600 → `src_aspect = 0.5`.
+
+This value is the target ratio we want the final PNG to have.
+
+### ***Deciding Which Dimension to Preserve***  
+
+**If we preserve width**
+
+```Python
+    if preserve == "width":
+        target_w = Wp
+        target_h = max(1, int(round(target_w / src_aspect)))
+```
+
+Keep the PNG’s current width `Wp` and compute the height that gives the same aspect ratio as the source.
+
+Since we want `target_w` / `target_h` = `src_aspect`, which re-arranged can be intended as `target_h` = `target_w` / `src_aspect`
+
+The conditional statement will process:
+
+`target_w = Wp`
+
+* Use the PNG’s current width as the final width.
+
+`target_h = max(1, int(round(target_w / src_aspect)))`  
+
+* Compute `target_w / src_aspect` (a float).
+* `round(...)` → nearest integer, to avoid systematic rounding bias.
+* `int(...)` → convert to integer (Pillow needs integer pixel sizes).
+* `max(1, ...)` → enforce at least 1 pixel height to avoid illegal size `(width, 0)` or `(width, negative)` in pathological cases.
+
+**If we preserve height**  
+
+```Python
+    else:
+        target_h = Hp
+        target_w = max(1, int(round(target_h * src_aspect)))
+```
+
+It will keep the PNG’s current height Hp, adjust the width to match the aspect ratio.
+
+As we still `target_w` / `target_h` = `src_aspect`, and it will be rearranged as `target_w` = `target_h` x `src_aspect`, we will process:
+
+`target_h = Hp`
+
+* Use the PNG’s current height.
+
+`target_w = max(1, int(round(target_h * src_aspect)))`
+
+* Compute the corresponding width so that the aspect ratio matches.
+* Round to nearest integer.
+* Clamp to at least 1 pixel.
+
+### ***Conditional Resize With NEAREST Resampling***
+
+```Python
+    # NEAREST keeps ASCII pixels crisp
+    if (target_w, target_h) != (Wp, Hp):
+        png_img = png_img.resize((target_w, target_h), resample=Image.NEAREST)
+    return png_img
+```
+
+**The condition**  
+
+```Python
+    if (target_w, target_h) != (Wp, Hp):
+```
+
+* If the target size is the same as the current size, there’s no need to do anything.
+* This avoids an unnecessary resize operation (which can slightly degrade quality and costs CPU time).
+
+**The Resize Itself**
+
+```Python
+        png_img = png_img.resize((target_w, target_h), resample=Image.NEAREST)
+```
+
+`png_img.resize((target_w, target_h), ...)`  
+
+* Creates a new image with the given size.
+
+`resample=Image.NEAREST`  
+
+This is the nearest-neighbour resampling algorithm:  
+
+  * It doesn’t blend pixels together like bilinear or bicubic would.
+  * Each output pixel simply takes the colour of the nearest input pixel.
+  * Result: blocky, crisp pixels — exactly what you want for ASCII art, where each character is like a little tile. If you used bilinear/bicubic, the characters would blur and smear, destroying that “terminal” look.
+
+Then:
+
+```Python
+    return png_img
+```
+
+The (possibly resized) image is returned.
+
+In short, `_aspect_correct_png`:  
+
+1. Reads the current width/height of the ASCII PNG.
+2. Computes the original image’s aspect ratio.
+3. Depending on `preserve`:
+
+  * Keeps width and recalculates height, or
+  * Keeps height and recalculates width.
+
+4. Ensures the new dimensions are valid integers and at least 1 pixel.
+5. Resizes the image only if needed, using nearest-neighbour to keep characters crisp.
+6. Returns the corrected PNG.
+
