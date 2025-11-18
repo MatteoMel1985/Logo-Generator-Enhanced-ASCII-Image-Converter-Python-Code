@@ -1142,3 +1142,25 @@ def convert_image_to_ascii(
 ```
 
 The function takes an image (file or URL), turns it into ASCII art, saves three files (plain text, HTML, and PNG), fixes the PNG so it has the same aspect ratio as the original image, and optionally shows you an inline HTML preview. That’s the whole job of `convert_image_to_ascii`.
+
+### ***Function Signature & Parameters***  
+
+```Python
+def convert_image_to_ascii(
+    image_path: str,
+    out_width_chars: int = 900,
+    charset: str = DENSITY_HEAVY,
+    fg_color: str = "#66ff66",
+    bg_color: str = "#000000",
+    brightness_boost: float = 1.3,
+    preview_inline: bool = True,
+    out_dir: Path = OUT_DIR,
+    png_font_size: int = 12,
+    png_line_spacing_px: int = 0,
+    use_bold_font: bool = True,
+    png_stroke_width: int = 1,
+    preserve_aspect_by: str = "width",  # "width" or "height"
+    char_aspect_guess: float = 0.5,     # rough guess; final PNG is corrected anyway
+):
+```
+
