@@ -1286,7 +1286,7 @@ So here:
 
 ### ***Step 2  Normalize Image and Build ASCII Grid***  
 
-```    # 2) Build ASCII grid (initial guess rows); we will correct aspect after rendering
+``` 
     resized = _normalize_image_for_ascii(img, cols=out_width_chars, char_aspect_guess=char_aspect_guess)
     arr = np.array(resized)
     char_grid = _map_pixels_to_chars(arr, charset, invert_map=True, brightness_boost=brightness_boost)
@@ -1295,4 +1295,140 @@ So here:
 This is where the image → character grid transformation happens.  
 
 `_normalize_image_for_ascii(...)`  
+
+Typical responsibilities (based on the name and context):  
+
+* Convert the image to grayscale or luminance.
+
+* Resize it so that:
+
+  *  The width (in pixels) corresponds to `out_width_chars`.
+  *  The height is adjusted based on `char_aspect_guess` so that when we draw text characters (which are taller than they are wide), the ASCII art roughly matches the original proportions.
+ 
+* Possibly pad/crop or normalise intensities.
+
+The result: a resized, grayscale-like image tailored for ASCII conversion.  
+
+`arr = np.array(resized)`  
+
+* Converts the resized PIL image into a NumPy array:
+
+  * Likely shape `(H, W)` or `(H, W, 3)` if still RGB.
+  * Values are pixel intensities.
+ 
+`char_grid = _map_pixels_to_chars(arr, charset, invert_map=True, brightness_boost=brightness_boost)`
+
+Maps pixels to chars. This helper:
+
+1. Takes the pixel intensity array `arr`.
+
+2. Optionally multiplies intensities by `brightness_boost` to avoid super-dark ASCII.
+
+3. Normalises values to a range (e.g. 0–1 or 0–255).
+
+4. Maps each pixel to a character from `charset`.
+
+  * Dark pixel → “dense” character (e.g. `@`, `#`).
+  * Bright pixel → “light” character (e.g. `.` or space).
+
+5. `invert_map=True` means it may invert the mapping (bright pixels → “empty” chars).
+
+The result: 
+
+`char_grid`: a 2D structure (e.g. list of lists or list of strings) representing ASCII art where each element is a character.  
+
+### ***Step 3 — Build Base Filenames***  
+
+```Python
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    stem = Path(fname).stem or "ascii_image"
+    base = f"{stem}_ASCII_{out_width_chars}w_{stamp}"
+    out_txt, out_html, out_png = out_dir / f"{base}.txt", out_dir / f"{base}.html", out_dir / f"{base}.png"
+```
+
+`stamp = datetime.now().strftime("%Y%m%d_%H%M%S")`  
+
+* Generates a timestamp like `"20251118_142530"` to keep filenames unique.
+
+`stem = Path(fname).stem or "ascii_image"`  
+
+* `Path(fname).stem` = filename without extension, e.g. `"my_photo"` from `"my_photo.jpg"`.
+* Fallback `"ascii_image"` if something goes wrong.
+
+`base = f"{stem}_ASCII_{out_width_chars}w_{stamp}"`
+
+* Example: `"my_photo_ASCII_900w_20251118_142530"`.
+
+`out_txt`, `out_html`, `out_png` 
+
+* Combine `out_dir` with `base` to form full paths for `.txt`, `.html`, `.png` outputs.
+
+So every run yields three nicely named files, containing:
+
+* Stem of original file.
+* The width in characters.
+* A timestamp.
+
+### ***Step 4 — Save ASCII as text and HTML***  
+
+```Python
+    ascii_text = _ascii_to_text_lines(char_grid)
+    out_txt.write_text(ascii_text, encoding="utf-8")
+    html = _ascii_to_html(char_grid, fg_color, bg_color)
+    out_html.write_text(html, encoding="utf-8")
+```
+
+**Plain Text-File**  
+
+`ascii_text = _ascii_to_text_lines(char_grid)`  
+
+* Takes the 2D char grid and turns it into a multiline string:
+
+  * One row of `char_grid` → one line in the string.
+  * Joins lines with `\n`.
+ 
+ `out_txt.write_text(ascii_text, encoding="utf-8")`  
+
+ * Saves it as a UTF-8 text file.
+
+**Result**: a `.txt` file you can open in any editor.  
+
+**HTML File**  
+
+`html = _ascii_to_html(char_grid, fg_color, bg_color)`  
+
+* Wraps the ASCII grid in HTML tags.
+
+* Uses CSS/inline styles so:
+
+  * The text is in a monospace font.
+  * Foreground colour = `fg_color`.
+  * Background colour = `bg_color.`
+ 
+* Might be something like:
+
+  * `<pre style="color: #66ff66; background-color: #000000;">...</pre>`.
+
+`out_html.write_text(html, encoding="utf-8")`
+
+* Saves the HTML file.
+
+*Result*: a `.html` file you can open in a browser to see coloured ASCII art.  
+
+### ***Step 5 — Render PNG and Correct Its Aspect Ratio***  
+
+```Python
+    # 5) Render PNG, then aspect-correct to source ratio
+    png_img = _render_png_from_ascii(
+        char_grid,
+        fg_color=fg_color,
+        bg_color=bg_color,
+        font=font,
+        stroke_width=png_stroke_width,
+        stroke_fill=fg_color,
+        line_spacing_px=png_line_spacing_px,
+    )
+    png_img = _aspect_correct_png(png_img, src_w, src_h, preserve=preserve_aspect_by)
+    png_img.save(out_png, format="PNG")
+```
 
