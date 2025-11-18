@@ -1534,3 +1534,139 @@ Returns a dictionary with:
 5. Resizes the PNG so that its aspect ratio matches the original image exactly, while preserving either width or height.
 6. Optionally shows an inline HTML preview.
 7. Returns the paths of the generated files.
+
+### ***Example Usage and Chosen Settings***  
+
+```Python
+IMAGE_PATH = "https://github.com/MatteoMel1985/Relational-Dataset-Images/blob/main/Demo%20Logo/With-Snake-Shading.jpg?raw=true"
+
+convert_image_to_ascii(
+    IMAGE_PATH,
+    out_width_chars=900,
+    charset=DENSITY_HEAVY,
+    fg_color="#66ff66",
+    bg_color="#000000",
+    brightness_boost=1.3,
+    png_font_size=12,
+    png_line_spacing_px=0,
+    use_bold_font=True,
+    png_stroke_width=1,
+    preserve_aspect_by="width",  # keep PNG width; adjust height to match source aspect
+)
+```
+
+The `convert_image_to_ascii() `function converts an image into ASCII art and exports it in three formats: plain text (`.txt`), HTML (`.html`), and PNG (`.png`). It downloads or loads an image, converts it to grayscale, maps pixel brightness to ASCII characters, and then renders a final PNG image that is aspect-corrected to exactly match the original image's proportions.
+
+**Parameter Breakdown**  
+
+`IMAGE_PATH` 
+
+* Specifies the source image URL or file path.
+
+* The function automatically converts GitHub blob URLs to raw content URLs.
+
+`out_width_chars=900`  
+
+* Sets the width of the ASCII art to 900 characters.
+
+* This determines the horizontal resolution of your ASCII output.
+
+* More characters = finer detail but larger file size.
+
+`charset=DENSITY_HEAVY`  
+
+* Defines which ASCII characters to use for representing different brightness levels.
+
+* DENSITY_HEAVY uses `"MW@#%8&$*+=-:. "` (15 characters from darkest to lightest).
+
+* Characters with more "ink" (like M, W, @) represent darker pixels.
+
+* Lighter characters (like dots and spaces) represent brighter pixels.
+
+`fg_color="#66ff66"`  
+
+* Sets the foreground (text) color to bright green (`#66ff66`).
+
+* This creates the classic "Matrix" or terminal aesthetic.
+
+* Applied to both HTML and PNG outputs.
+
+`bg_color="#000000"`  
+
+* Sets the background color to pure black (#000000).
+
+* Creates high contrast with the green text.
+
+* Used in HTML and PNG rendering.
+
+`brightness_boost=1.3`  
+
+* Multiplies pixel brightness values by 1.3 (30% increase)
+
+* Makes the ASCII art brighter and more visible
+
+* Helps compensate for the visual density of ASCII characters
+
+`png_font_size=12`  
+
+* Sets the font size to 12 points for the PNG rendering
+
+* Larger values create bigger output images
+
+* Affects the final PNG dimensions
+
+`png_line_spacing_px=0`  
+
+* Sets additional vertical spacing between lines to 0 pixels
+
+* Keeps lines tightly packed for a denser appearance
+
+* Positive values would add gaps between rows
+
+`use_bold_font=True`  
+
+* Enables bold font rendering for the PNG output
+
+* Makes characters thicker and more visible
+
+* Uses fonts like DejaVuSansMono-Bold when available
+
+`png_stroke_width=1`  
+
+* Adds a 1-pixel stroke (outline) around each character
+
+* Makes characters appear slightly thicker and more prominent
+
+* Set to 0 for no stroke effect
+
+`preserve_aspect_by="width"`  
+
+* Determines how to correct the final PNG aspect ratio
+
+* `"width"` keeps the PNG width fixed and adjusts height to match the original image's aspect ratio
+
+* Alternative "height" would keep height fixed and adjust width
+
+* This ensures the final PNG doesn't look stretched or squashed compared to the source image
+
+### ***How It Works Together***  
+
+When you call this function with these parameters, it:  
+
+1. Downloads the image from GitHub.
+
+2. Resizes it to approximately 900 characters wide (with proportional height).
+
+3. Converts each pixel to one of the 15 characters in DENSITY_HEAVY based on brightness.
+
+4. Saves a text file with the raw ASCII characters.
+
+5. Generates an HTML file with green-on-black styling for web viewing.
+
+6. Renders a PNG image using a 12pt bold font with green characters on black background.
+
+7. Post-processes the PNG to exactly match the original image's aspect ratio.
+
+8. Saves all three files to the `./ascii_output/` directory with timestamped filenames.
+
+9. 
