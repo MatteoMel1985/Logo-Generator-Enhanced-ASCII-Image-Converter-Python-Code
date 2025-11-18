@@ -858,7 +858,7 @@ draw.text(
     * Pass `img` to `_aspect_correct_png` to tweak aspect ratio.
     * Save it to disk as PNG.
    
-# ***How this Fits in The Whole Pipeline***
+# ***How this Fits in the Whole Pipeline***
 
 Just to connect the dots with the rest of your code:
 
