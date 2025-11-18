@@ -1415,7 +1415,7 @@ So every run yields three nicely named files, containing:
 
 *Result*: a `.html` file you can open in a browser to see coloured ASCII art.  
 
-### ***Step 5 — Render PNG and Correct Its Aspect Ratio***  
+### ***Step 5 - Render PNG and Correct Its Aspect Ratio***  
 
 ```Python
     # 5) Render PNG, then aspect-correct to source ratio
@@ -1432,3 +1432,105 @@ So every run yields three nicely named files, containing:
     png_img.save(out_png, format="PNG")
 ```
 
+`_render_png_from_ascii(...)`  
+
+This function:  
+
+1. Computes the required image size in pixels:
+
+  * Width: `chars_per_line` * `char_pixel_width`.
+  * Height: `num_lines` * `(char_pixel_height + line_spacing_px)`.
+
+2. Creates a new Pillow `Image` with `bg_color` as background.
+
+3. Draws each character at the correct `(x, y)` position using:
+
+  * The `font` selected earlier.
+  * `fg_color` as fill.
+  * `stroke_width` and `stroke_fill` for outlining.
+
+You get: `png_img`, an initial PNG rendering of the ASCII art.
+However, because of approximations (e.g. `char_aspect_guess`, font metrics), its aspect ratio will not necessarily match the original image’s aspect exactly.  
+
+`  png_img = _aspect_correct_png(png_img, src_w, src_h, preserve=preserve_aspect_by)`
+
+Given the previous function
+
+```Python
+def _aspect_correct_png(png_img: Image.Image, src_w: int, src_h: int, preserve: str = "width") -> Image.Image:
+    Wp, Hp = png_img.size
+    src_aspect = src_w / src_h
+
+    if preserve == "width":
+        target_w = Wp
+        target_h = max(1, int(round(target_w / src_aspect)))
+    else:
+        target_h = Hp
+        target_w = max(1, int(round(target_h * src_aspect)))
+
+    if (target_w, target_h) != (Wp, Hp):
+        png_img = png_img.resize((target_w, target_h), resample=Image.NEAREST)
+    return png_img
+```
+
+The final PNG has essentially the same aspect ratio as the original image, while keeping either width or height unchanged, depending on `preserve_aspect_by`.
+
+### ***Saving the PNG***  
+
+```Python
+    png_img.save(out_png, format="PNG")
+```
+
+* Writes the corrected image to disk as a PNG file.
+
+### ***Step 6 - Optional Inline HTML Preview***  
+
+```Python
+    if preview_inline:
+        display(HTML(f"<p><b>ASCII preview ({out_width_chars} chars wide)</b></p>"))
+        display(HTML(html))
+```
+
+* `if preview_inline`:
+
+If enabled:  
+
+1. `display(HTML(f"<p><b>ASCII preview ({out_width_chars} chars wide)</b></p>"))` Shows a small heading in the notebook.
+2. `display(HTML(html))` Renders the HTML ASCII art directly in the Jupyter output.
+
+### ***Logging and Return Value***  
+
+```Python
+    print(f"Saved TXT  -> {out_txt.resolve()}")
+    print(f"Saved HTML -> {out_html.resolve()}")
+    print(f"Saved PNG  -> {out_png.resolve()}")
+    return {"txt_path": str(out_txt), "html_path": str(out_html), "png_path": str(out_png)}
+```
+
+`print(...)`  
+
+  * Logs the absolute paths of the files that were saved. Useful in Jupyter to quickly copy paths.
+
+`return { ... }`  
+
+Returns a dictionary with:  
+
+  * `"txt_path"` → path to `.txt`.
+  * `"html_path"` → path to `.html`.
+  * `"png_path"` → path to `.png`.
+
+### **Summary of the Function**  
+
+`convert_image_to_ascii` is the top-level pipeline that:  
+
+1. Loads an image (local or URL).
+2. Chooses a font.
+3. Resizes the image and converts its pixels into characters using a density charset.
+4. Saves the ASCII art as:
+  * Plain text (`.txt`),
+  * HTML (`.html` with colours),
+  * PNG (graphical rendering of ASCII).
+
+5. Resizes the PNG so that its aspect ratio matches the original image exactly, while preserving either width or height.
+6. Optionally shows an inline HTML preview.
+7. Returns the paths of the generated files.
