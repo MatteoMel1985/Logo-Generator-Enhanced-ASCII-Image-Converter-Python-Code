@@ -1070,3 +1070,75 @@ In short, `_aspect_correct_png`:
 5. Resizes the image only if needed, using nearest-neighbour to keep characters crisp.
 6. Returns the corrected PNG.
 
+# ***The Public API: Convert and Export***  
+
+```Python
+def convert_image_to_ascii(
+    image_path: str,
+    out_width_chars: int = 900,
+    charset: str = DENSITY_HEAVY,
+    fg_color: str = "#66ff66",
+    bg_color: str = "#000000",
+    brightness_boost: float = 1.3,
+    preview_inline: bool = True,
+    out_dir: Path = OUT_DIR,
+    png_font_size: int = 12,
+    png_line_spacing_px: int = 0,
+    use_bold_font: bool = True,
+    png_stroke_width: int = 1,
+    preserve_aspect_by: str = "width",  # "width" or "height"
+    char_aspect_guess: float = 0.5,     # rough guess; final PNG is corrected anyway
+):
+    """
+    Convert to ASCII and export TXT/HTML/PNG.
+    Final PNG is post-corrected to match the original image aspect exactly.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1) Load and prepare
+    img, fname = _load_image(image_path)
+    src_w, src_h = img.size
+    font = _pick_font(png_font_size, bold=use_bold_font)
+
+    # 2) Build ASCII grid (initial guess rows); we will correct aspect after rendering
+    resized = _normalize_image_for_ascii(img, cols=out_width_chars, char_aspect_guess=char_aspect_guess)
+    arr = np.array(resized)
+    char_grid = _map_pixels_to_chars(arr, charset, invert_map=True, brightness_boost=brightness_boost)
+
+    # 3) Files base
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    stem = Path(fname).stem or "ascii_image"
+    base = f"{stem}_ASCII_{out_width_chars}w_{stamp}"
+    out_txt, out_html, out_png = out_dir / f"{base}.txt", out_dir / f"{base}.html", out_dir / f"{base}.png"
+
+    # 4) Save text + HTML
+    ascii_text = _ascii_to_text_lines(char_grid)
+    out_txt.write_text(ascii_text, encoding="utf-8")
+    html = _ascii_to_html(char_grid, fg_color, bg_color)
+    out_html.write_text(html, encoding="utf-8")
+
+    # 5) Render PNG, then aspect-correct to source ratio
+    png_img = _render_png_from_ascii(
+        char_grid,
+        fg_color=fg_color,
+        bg_color=bg_color,
+        font=font,
+        stroke_width=png_stroke_width,
+        stroke_fill=fg_color,
+        line_spacing_px=png_line_spacing_px,
+    )
+    png_img = _aspect_correct_png(png_img, src_w, src_h, preserve=preserve_aspect_by)
+    png_img.save(out_png, format="PNG")
+
+    # 6) Optional inline preview (HTML preview aspect may vary by browser font)
+    if preview_inline:
+        display(HTML(f"<p><b>ASCII preview ({out_width_chars} chars wide)</b></p>"))
+        display(HTML(html))
+
+    print(f"Saved TXT  -> {out_txt.resolve()}")
+    print(f"Saved HTML -> {out_html.resolve()}")
+    print(f"Saved PNG  -> {out_png.resolve()}")
+    return {"txt_path": str(out_txt), "html_path": str(out_html), "png_path": str(out_png)}
+```
+
+The function takes an image (file or URL), turns it into ASCII art, saves three files (plain text, HTML, and PNG), fixes the PNG so it has the same aspect ratio as the original image, and optionally shows you an inline HTML preview. That’s the whole job of `convert_image_to_ascii`.
