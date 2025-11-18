@@ -1163,4 +1163,136 @@ def convert_image_to_ascii(
     char_aspect_guess: float = 0.5,     # rough guess; final PNG is corrected anyway
 ):
 ```
-sdfsdf
+A high-level “orchestrator” function. All the lower-level helpers do small jobs (load, map pixels, render PNG, etc.). This one chains everything together into a full workflow.  
+
+**Key arguments:**  
+
+`image_path: str`:  
+
+* Path or URL of the source image.
+
+`out_width_chars: int = 900`:
+
+* Target width of the ASCII art in characters, not pixels. Larger value → more columns → more detail but bigger outputs.
+
+`charset: str = DENSITY_HEAVY`:
+
+* String of characters ordered from darkest to lightest. Used to map pixel brightness → characters.
+
+`fg_color: str = "#66ff66"`:
+
+* Foreground colour for ASCII (text and stroke) in HTML/PNG (matrix-style green).
+
+`bg_color: str = "#000000"`:
+
+* Background colour of HTML and PNG (black).
+
+`brightness_boost: float = 1.3`:
+
+* Multiplier to brighten the grayscale intensities before mapping to characters (helps avoid overly dark ASCII).
+
+`preview_inline: bool = True`: 
+
+* If `True`, show an HTML preview in a Jupyter notebook (using `IPython.display`).
+
+`out_dir: Path = OUT_DIR`:  
+
+* Directory where `.txt`, `.html`, `.png `will be saved. Ensures everything for one run goes to a consistent folder.
+
+`png_font_size: int = 12`:
+
+* Font size (in points) used when rendering the ASCII into a PNG image.
+
+`png_line_spacing_px: int = 0`:
+
+* Extra vertical spacing (pixels) between lines in the PNG. Allows you to “stretch” the output if needed.
+
+`use_bold_font: bool = True`:
+
+* Whether to use a bold monospace font (inkier, more legible ASCII).
+
+`png_stroke_width: int = 1`:  
+
+* Thickness of the outline drawn around characters in the PNG (if the renderer uses a stroke).
+
+`preserve_aspect_by: str = "width"`
+
+* Passed to `_aspect_correct_png`.
+
+    * `"width"`: keep PNG width, adjust its height to match original aspect.
+    * `"height"`: keep PNG height, adjust its width to match original aspect.
+
+`char_aspect_guess: float = 0.5 `
+
+* Rough aspect ratio of characters (height/width relationship). Used at the resizing-for-ASCII stage. The comment notes that this is just a guess, because `_aspect_correct_png` will do a precise fix at the end.
+
+### ***Ensure Output Directory Exists***  
+
+```Python
+    out_dir.mkdir(parents=True, exist_ok=True)
+```
+
+`out_dir.mkdir(parents=True, exist_ok=True)`:  
+
+* `parents=True`: create parent directories if needed.
+* `exist_ok=True`: don’t crash if the directory already exists.
+
+Effect: guarantees that you can safely write files to out_dir later.  
+
+### ***Step 1 - Load Image and Pick Font***  
+
+```Python
+    # 1) Load and prepare
+    img, fname = _load_image(image_path)
+    src_w, src_h = img.size
+    font = _pick_font(png_font_size, bold=use_bold_font)
+```
+
+`_load_image(image_path)`
+
+If image_path starts with "http", it:  
+
+* Converts GitHub `blob` URLs to `raw` URLs when needed.
+* Downloads the image via `requests`.
+* Opens it with Pillow (`Image.open`) and converts to `RGB"`.
+* Returns the `Image` and a `Path`-style filename (e.g. extracted from the URL).
+
+If it’s a local path, it
+
+* Wraps it in `Path`.
+* Checks existence, raises `FileNotFoundError` if missing.
+* Opens it with Pillow, converts to `"RGB"`.
+* Returns the `Image` and the path.
+
+So here:  
+
+* `img` → the loaded PIL `Image`.
+* `fname` → a `Path` giving a reasonable name (used for output filenames).
+
+`src_w, src_h = img.size` 
+
+* `img.size` is `(width, height)` in pixels.
+
+* These are used later:
+
+  * To compute the original aspect ratio.
+  * To pass into `_aspect_correct_png` so the PNG can be corrected.
+ 
+ `font = _pick_font(...)` 
+
+ * `_pick_font(png_font_size, bold=use_bold_font)` chooses a monospace font (like DejaVuSansMono or a fallback) at the given size.
+ 
+ * It returns an `ImageFont.FreeTypeFont` object, used by `_render_png_from_ascii` to draw text with Pillow.
+
+### ***Step 2  Normalize Image and Build ASCII Grid***  
+
+```    # 2) Build ASCII grid (initial guess rows); we will correct aspect after rendering
+    resized = _normalize_image_for_ascii(img, cols=out_width_chars, char_aspect_guess=char_aspect_guess)
+    arr = np.array(resized)
+    char_grid = _map_pixels_to_chars(arr, charset, invert_map=True, brightness_boost=brightness_boost)
+```
+
+This is where the image → character grid transformation happens.  
+
+`_normalize_image_for_ascii(...)`  
+
