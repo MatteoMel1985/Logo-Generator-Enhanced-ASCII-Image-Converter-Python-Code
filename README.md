@@ -1163,4 +1163,4 @@ def convert_image_to_ascii(
     char_aspect_guess: float = 0.5,     # rough guess; final PNG is corrected anyway
 ):
 ```
-
+sdfsdf
