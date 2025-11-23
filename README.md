@@ -1,3 +1,5 @@
+!(Logo)[https://github.com/MatteoMel1985/Relational-Dataset-Images/blob/main/Demo%20Logo/3_ASCII_1100w_20251122_142702.png?raw=true]
+
 # Logo-Generator-Enhanced-ASCII-Image-Converter-Python-Code
 
 The following is a thorough explanation of a Python code I wrote, whose function is to convert an input image to ASCII art and exporting three synchronized outputs: plain-text (`.txt`), HTML (`.html`), and a rendered bitmap PNG (`.png`). After rendering the PNG from text, it post-corrects the final image’s aspect ratio to exactly match the original photo/graphic.
