@@ -2,7 +2,6 @@
 
 <div align="center">
   <h1>How I Made My Logo: ASCII Image Converter Python ETL</h1>
-  />
 </div>
 
 # Logo-Generator-Enhanced-ASCII-Image-Converter-Python-Code
