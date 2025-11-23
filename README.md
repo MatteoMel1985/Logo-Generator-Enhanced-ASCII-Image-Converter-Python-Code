@@ -1,4 +1,4 @@
-!(Logo)[https://github.com/MatteoMel1985/Relational-Dataset-Images/blob/main/Demo%20Logo/3_ASCII_1100w_20251122_142702.png?raw=true]
+![Logo](https://github.com/MatteoMel1985/Relational-Dataset-Images/blob/main/Demo%20Logo/3_ASCII_1100w_20251122_142702.png?raw=true)
 
 # Logo-Generator-Enhanced-ASCII-Image-Converter-Python-Code
 
