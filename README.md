@@ -1,4 +1,4 @@
-![Logo](https://github.com/MatteoMel1985/Relational-Dataset-Images/blob/main/Demo%20Logo/3_ASCII_1100w_20251122_142702.png?raw=true)
+![Logo](https://github.com/MatteoMel1985/Relational-Dataset-Images/blob/main/Demo%20Logo/Artifex%20Datorum%20Classic.png?raw=true)
 
 <div align="center">
   <h1>How I Made My Logo: ASCII Image Converter Python ETL</h1>
