@@ -206,7 +206,7 @@ def convert_image_to_ascii(
 # ==========================================================
 # Example Usage (your image)
 # ==========================================================
-IMAGE_PATH = "https://github.com/MatteoMel1985/Relational-Dataset-Images/blob/main/Demo%20Logo/With-Snake-Shading.jpg?raw=true"
+IMAGE_PATH = "https://github.com/MatteoMel1985/Relational-Dataset-Images/blob/main/Demo%20Logo/LinkedIn%20cover%20-%201.png?raw=true"
 
 convert_image_to_ascii(
     IMAGE_PATH,
